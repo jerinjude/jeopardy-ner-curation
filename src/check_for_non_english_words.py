@@ -11,6 +11,7 @@ import enchant
 
 # Initialize English dictionary
 ENGLISH_DICT = enchant.Dict("en_US")
+REGEX_NUMBER = r'^\d[\d,.-]*$'
 
 
 def contains_non_english_and_words(text: str) -> tuple[bool, list[str]]:
@@ -27,6 +28,9 @@ def contains_non_english_and_words(text: str) -> tuple[bool, list[str]]:
     non_english_words = []
     tokens = re.findall(r"\b\w[\w'-]*\b", text)
     for token in tokens:
+        # Inline number detection instead of separate function
+        if re.fullmatch(REGEX_NUMBER, token):
+            continue
         if not ENGLISH_DICT.check(token.lower()):
             non_english_words.append(token)
     return (len(non_english_words) > 0, non_english_words)
