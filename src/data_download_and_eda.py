@@ -7,11 +7,14 @@ import json
 # Look for data in parent folder of src
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(SRC_DIR)
-output = os.path.join(PARENT_DIR, 'data', 'jeopardy_data.json')
+data_dir = os.path.join(PARENT_DIR, 'data')
+output = os.path.join(data_dir, 'jeopardy_data.json')
 url = 'https://drive.google.com/uc?id=0BwT5wj_P7BKXb2hfM3d2RHU1ckE'
 
 # Ensure data directory exists
-os.makedirs(os.path.dirname(output), exist_ok=True)
+if not os.path.exists(data_dir):
+    print(f"Data directory {data_dir} does not exist. Creating it...")
+    os.makedirs(data_dir, exist_ok=True)
 
 # Download file if it doesn't exist
 if not os.path.exists(output):
