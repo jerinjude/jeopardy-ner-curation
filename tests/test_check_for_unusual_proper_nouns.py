@@ -1,18 +1,19 @@
 """
-Unit tests for has_unusual_proper_nouns from check_for_unusual_proper_nouns.py.
+Tests for has_unusual_proper_nouns from check_for_unusual_proper_nouns.py
 
-These tests ensure the function correctly identifies unusual proper nouns
+These tests validate that the function correctly detects unusual proper nouns
 using spaCy POS tagging and wordfreq global frequency analysis.
+
+This file also includes a utility to help find the best threshold for
+has_unusual_proper_nouns by evaluating accuracy across a range of thresholds.
 """
 
-import os
 import sys
+import os
 import pytest
 
-# Ensure src is in the import path
-SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
+# Ensure src is in path for import
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 try:
     from check_for_unusual_proper_nouns import has_unusual_proper_nouns, nlp
@@ -20,6 +21,7 @@ try:
 except Exception:
     SPACY_AVAILABLE = False
 
+# Skip all tests if spaCy model is not available
 pytestmark = pytest.mark.skipif(
     not SPACY_AVAILABLE,
     reason="spaCy model 'en_core_web_sm' not available. Install with: python -m spacy download en_core_web_sm"
@@ -139,9 +141,84 @@ def test_has_unusual_proper_nouns(text, expected):
     assert isinstance(result, bool)
     assert result == expected
 
+@pytest.mark.parametrize("threshold", [1e-9, 1e-6, 1e-3, 1e-1])
+def test_different_thresholds(threshold):
+    """Test function behavior with different threshold values."""
+    text = "Napoleon Bonaparte conquered Europe"
+    result = has_unusual_proper_nouns(text, global_rare_threshold=threshold)
+    assert isinstance(result, bool)
+
+def find_best_threshold(test_cases, thresholds=None, verbose=True):
+    """
+    Try different thresholds, track metrics, and select the best one.
+    Prints the best threshold and its metrics.
+    Returns the best threshold and a list of (threshold, accuracy, precision, recall, f1, false_positives, false_negatives).
+    """
+    if thresholds is None:
+        # Logarithmic scale from 1e-10 to 1e-2
+        thresholds = [10**exp for exp in range(-10, -1)]
+        thresholds += [5e-7, 1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2]
+        thresholds = sorted(set(thresholds))
+    results = []
+    best_metric = -1
+    best_threshold = None
+    best_metrics = None
+    for threshold in thresholds:
+        tp = 0  # True positives
+        tn = 0  # True negatives
+        fp = 0  # False positives
+        fn = 0  # False negatives
+        for text, expected in test_cases:
+            try:
+                result = has_unusual_proper_nouns(text, global_rare_threshold=threshold)
+            except Exception:
+                continue
+            if result and expected:
+                tp += 1
+            elif not result and not expected:
+                tn += 1
+            elif result and not expected:
+                fp += 1
+            elif not result and expected:
+                fn += 1
+        total = tp + tn + fp + fn
+        accuracy = (tp + tn) / total if total else 0.0
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+        results.append((threshold, accuracy, precision, recall, f1, fp, fn))
+        if verbose:
+            print(f"Threshold: {threshold:.1e} | Acc: {accuracy:.3f} | Prec: {precision:.3f} | Rec: {recall:.3f} | F1: {f1:.3f} | FP: {fp} | FN: {fn}")
+        # Use F1 as the main metric for "best"
+        if f1 > best_metric:
+            best_metric = f1
+            best_threshold = threshold
+            best_metrics = (accuracy, precision, recall, f1, fp, fn)
+    if verbose and best_threshold is not None:
+        print(f"\nBest threshold: {best_threshold:.1e}")
+        print(f"  Accuracy:  {best_metrics[0]:.3f}")
+        print(f"  Precision: {best_metrics[1]:.3f}")
+        print(f"  Recall:    {best_metrics[2]:.3f}")
+        print(f"  F1:        {best_metrics[3]:.3f}")
+        print(f"  FP:        {best_metrics[4]}")
+        print(f"  FN:        {best_metrics[5]}")
+    return best_threshold, results
+
 if __name__ == "__main__":
     if not SPACY_AVAILABLE:
         print("spaCy model 'en_core_web_sm' not available.")
         print("Install with: python -m spacy download en_core_web_sm")
     else:
-        pytest.main([__file__, "-v"])
+        import argparse
+        parser = argparse.ArgumentParser(description="Test has_unusual_proper_nouns and find the best threshold.")
+        parser.add_argument("--find-threshold", action="store_true", help="Try different thresholds and print accuracy and metrics.")
+        parser.add_argument("--pytest", action="store_true", help="Run pytest as usual.")
+        args = parser.parse_args()
+        if args.find_threshold:
+            print("Trying different thresholds to find the best one (by F1 score)...")
+            best_threshold, all_results = find_best_threshold(TEST_CASES)
+            print(f"Best threshold found: {best_threshold}")
+        elif args.pytest:
+            pytest.main([__file__, "-v"])
+        else:
+            print("Specify --find-threshold to try thresholds or --pytest to run tests.")
