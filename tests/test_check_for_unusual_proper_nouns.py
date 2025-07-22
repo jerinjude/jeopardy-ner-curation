@@ -214,11 +214,11 @@ if __name__ == "__main__":
         parser.add_argument("--find-threshold", action="store_true", help="Try different thresholds and print accuracy and metrics.")
         parser.add_argument("--pytest", action="store_true", help="Run pytest as usual.")
         args = parser.parse_args()
+        # Default behavior: run pytest unless --find-threshold is specified
         if args.find_threshold:
             print("Trying different thresholds to find the best one (by F1 score)...")
             best_threshold, all_results = find_best_threshold(TEST_CASES)
             print(f"Best threshold found: {best_threshold}")
-        elif args.pytest:
-            pytest.main([__file__, "-v"])
         else:
-            print("Specify --find-threshold to try thresholds or --pytest to run tests.")
+            # Default to pytest (even if --pytest is not specified)
+            pytest.main([__file__, "-v"])
