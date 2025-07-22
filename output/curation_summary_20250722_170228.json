@@ -1,0 +1,21 @@
+{
+  "timestamp": "20250722_170228",
+  "total_questions_analyzed": 216930,
+  "categories": {
+    "numbers": {
+      "total_available": 91970,
+      "samples_created": 1000,
+      "percentage_of_total": 42.39616466141152
+    },
+    "non_english": {
+      "total_available": 100382,
+      "samples_created": 1000,
+      "percentage_of_total": 46.273913243903564
+    },
+    "unusual_proper_nouns": {
+      "total_available": 66139,
+      "samples_created": 1000,
+      "percentage_of_total": 30.488636887475224
+    }
+  }
+}
